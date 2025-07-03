@@ -9,7 +9,7 @@ import com.avinash.nearby.sender.model.BLEResolvedDevice
 import com.avinash.nearby.sender.model.BLEResult
 import com.avinash.nearby.sender.resolver.BLEResolver
 import com.avinash.nearby.sender.scanner.BLEDeviceScanner
-import com.avinash.nearby.utils.emitOnCountOtDebounce
+import com.avinash.nearby.utils.emitOnChuckedOrDebounce
 import com.avinash.nearby.utils.printLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.GlobalScope
@@ -40,15 +40,16 @@ class BLEScannerManager @Inject constructor(
 
     private suspend fun collectBLEDevicesFromScanner() {
         bleDeviceScanner.bleDevices
-               ///.emitOnCountOtDebounce(500, 5)
+            .emitOnChuckedOrDebounce(
+                duration = 1500,
+                size = 5
+            )
             .collect { bleDevices ->
-                printLog("Collected BLE Devices: $bleDevices")
+                printLog("Collected BLE Devices: Total ${bleDevices.size} unique ${bleDevices.distinctBy { it.macAddress }.size} $bleDevices")
                 _bleResolvedDevices.update { resolvedDevices ->
-                    val result =
+                    val acc =
                         resolvedDevices + bleResolver.resolveBLEDevices(bleDevices = bleDevices)
-                    result.distinctBy { it.bleId }.also {
-                        printLog("Resolved BLE Devices: ${it.size}, New devices: ${it.size - resolvedDevices.size}")
-                    }
+                    acc.distinct()
                 }
             }
     }

@@ -20,7 +20,7 @@ class BLEDeviceScanner @Inject constructor(
     private val bleScanSettingsProvider: BLEScanSettingsProvider
 ) {
 
-    private val _bleDevices = MutableStateFlow<List<BLEDevice>>(emptyList())
+    private val _bleDevices = MutableStateFlow<Set<BLEDevice>>(emptySet())
     val bleDevices = _bleDevices.asStateFlow()
 
     private val _scanningState = MutableStateFlow<ScanState>(ScanState.IDLE)
@@ -34,7 +34,7 @@ class BLEDeviceScanner @Inject constructor(
             printLog("The Single Scan Result: $result")
             super.onScanResult(callbackType, result)
             val device = result?.getBLEDevice() ?: return
-            _bleDevices.value = listOf(device)
+            _bleDevices.value = setOf(device)
         }
 
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -42,7 +42,7 @@ class BLEDeviceScanner @Inject constructor(
             printLog("The Batch Scan Result: ${results?.size}")
             super.onBatchScanResults(results)
             val devices = results?.mapNotNull { it.getBLEDevice() } ?: return
-            _bleDevices.value = devices
+            _bleDevices.value = devices.toSet()
         }
 
         override fun onScanFailed(errorCode: Int) {

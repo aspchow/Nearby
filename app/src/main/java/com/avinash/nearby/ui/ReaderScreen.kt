@@ -44,13 +44,17 @@ fun ReaderScreen(
             Text("The Scanning State : $scanningState")
         }
 
-        items(bleDevices, key = {
+        item {
+            Text("The Devices count  : ${bleDevices.size}")
+        }
+
+        items(bleDevices.toList(), key = {
             it.bleId
         }) { device ->
             Column {
                 Text(device.bleId)
-                Text(device.deviceName)
-                Text(device.imageUrl)
+               /* Text(device.deviceName)
+                Text(device.imageUrl)*/
             }
         }
     }

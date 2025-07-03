@@ -15,14 +15,14 @@ class BLEResolver @Inject constructor() {
 
     private val resolvedDevices = hashMapOf<String, BLEResolvedDevice>()
 
-    suspend fun resolveBLEDevices(bleDevices: List<BLEDevice>): List<BLEResolvedDevice> {
+    suspend fun resolveBLEDevices(bleDevices: Set<BLEDevice>): List<BLEResolvedDevice> {
         val alreadyCachedDevices = bleDevices.filter { it.name in resolvedDevices }
         val devicesToGetFromRemote = bleDevices - alreadyCachedDevices.toSet()
         printLog("Requested devices: ${bleDevices.size}, Already cached: ${alreadyCachedDevices.size}, Remote devices: ${devicesToGetFromRemote.size}")
         return resolveBLEDeviceRemote(devicesToGetFromRemote) + alreadyCachedDevices.map { resolvedDevices[it.name]!! }
     }
 
-    private suspend fun resolveBLEDeviceRemote(bleDevices: List<BLEDevice>): List<BLEResolvedDevice> {
+    private suspend fun resolveBLEDeviceRemote(bleDevices: Set<BLEDevice>): List<BLEResolvedDevice> {
         delay(1000L)
         return bleDevices.map {
             val resolvedDevice = BLEResolvedDevice(

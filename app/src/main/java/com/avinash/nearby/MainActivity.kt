@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             NearbyTheme {
-                val bleResolvedDevices by viewModel.resolvedDevices.collectAsState()
+                val bleResolvedDevices by viewModel.resolvedDevices.collectAsState(emptyList())
                 val permissionState by permissionDelegate.permissionState.collectAsState(PermissionDelegate.PermissionMeta.Unknown)
                 val scanningState by viewModel.scanningState.collectAsState()
                 val isLocationEnabled by permissionDelegate.isLocationEnabled.collectAsState()
