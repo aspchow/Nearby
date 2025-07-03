@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.BluetoothLeScanner
 import android.content.Context
+import android.location.LocationManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,6 +29,11 @@ class BLEModule {
     @Provides
     fun provideBluetoothAdapter(bluetoothManager : BluetoothManager): BluetoothAdapter {
         return bluetoothManager.adapter
+    }
+
+    @Provides
+    fun providesLocationManager(@ApplicationContext context: Context): LocationManager {
+        return context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     }
 
     @Provides

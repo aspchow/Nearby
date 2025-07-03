@@ -19,7 +19,9 @@ import com.avinash.nearby.sender.scanner.ScanState
 @Composable
 fun ReaderScreen(
     bleDevices: List<BLEResolvedDevice>,
-    permissionState: PermissionDelegate.PermissionState,
+    isLocationEnabled : Boolean,
+    isBLEEnabled : Boolean,
+    permissionMeta: PermissionDelegate.PermissionMeta,
     scanningState  : ScanState
 ) {
     LazyColumn(
@@ -28,7 +30,14 @@ fun ReaderScreen(
         )
     ) {
         item {
-            Text("The Permission State : $permissionState")
+            Text("The Permission State : $permissionMeta")
+        }
+        item {
+            Text("Is Location Enabled : $isLocationEnabled")
+        }
+
+        item {
+            Text("is BLE Enabled : $isBLEEnabled")
         }
 
         item {

@@ -1,19 +1,17 @@
 package com.avinash.nearby
 
 import android.Manifest
-import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.content.Intent
-import android.net.Uri
+import android.location.LocationManager
 import android.os.Build
-import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale
+import com.avinash.nearby.utils.printLog
 import dagger.hilt.android.scopes.ActivityScoped
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import javax.inject.Inject
 
 
@@ -23,17 +21,48 @@ import javax.inject.Inject
 @ActivityScoped
 class PermissionDelegate @Inject constructor(
     private val bluetoothAdapter: BluetoothAdapter,
+    private val locationManager: LocationManager,
     private val activity: ComponentActivity
 ) {
 
-    sealed interface PermissionState {
-        data object Idle : PermissionState
-        data object Granted : PermissionState
-        data object Denied : PermissionState
+    enum class PermissionStatus {
+        Unknown,
+        Granted,
+        Denied
     }
 
-    private val _permissionState = MutableStateFlow<PermissionState>(PermissionState.Idle)
-    val permissionState = _permissionState.asStateFlow()
+    sealed interface PermissionMeta {
+        data object Unknown : PermissionMeta
+        data class Granted(val locationEnabled: Boolean, val bleEnabled: Boolean) : PermissionMeta
+        data object Denied : PermissionMeta
+    }
+
+
+    private val _isLocationEnabled = MutableStateFlow(false)
+    val isLocationEnabled = _isLocationEnabled.asStateFlow()
+
+    private val _isBLEEnabled = MutableStateFlow(false)
+    val isBLEEnabled = _isBLEEnabled.asStateFlow()
+
+
+    private val _permissionState = MutableStateFlow(PermissionStatus.Unknown)
+    val permissionState = combine(
+        _permissionState,
+        isBLEEnabled,
+        isLocationEnabled
+    ) { permissionStatus, isBLEEnabled, isLocationEnabled ->
+        when (permissionStatus) {
+            PermissionStatus.Unknown -> PermissionMeta.Unknown
+            PermissionStatus.Granted -> {
+                PermissionMeta.Granted(
+                    locationEnabled = isLocationEnabled,
+                    bleEnabled = isBLEEnabled
+                )
+            }
+
+            PermissionStatus.Denied -> PermissionMeta.Denied
+        }
+    }
 
 
     private val requestBluetoothPermissionsLauncher = activity.registerForActivityResult(
@@ -41,71 +70,46 @@ class PermissionDelegate @Inject constructor(
     ) { permissions ->
         // Handle the permission results
         val granted = permissions.entries.all { it.value }
-        if (granted) {
-            Toast.makeText(activity, "Bluetooth permissions granted!", Toast.LENGTH_SHORT).show()
-            // Permissions granted, proceed with BLE scan or other operations
-            // startBleScan() // You would call your scan function here
-            checkAndRequestPermissionsAndBluetooth()
-            _permissionState.value = PermissionState.Granted
-        } else {
-            Toast.makeText(activity, "Bluetooth permissions denied.", Toast.LENGTH_SHORT).show()
-            // Handle permission denial (e.g., show explanation, disable BLE features)
-            _permissionState.value = PermissionState.Denied
-            // Check if any permission was permanently denied
-            val permanentlyDeniedPermissions =
-                permissions.entries.filter { (permission, isGranted) ->
-                    !isGranted && !activity.shouldShowRequestPermissionRationale(
-                        permission
-                    )
-                }.map { it.key }
-
-            if (permanentlyDeniedPermissions.isNotEmpty()) {
-                // At least one permission was permanently denied, guide user to settings
-                showSettingsDialog()
-            } else {
-                // Some permissions denied, but not permanently (user can be asked again)
-                Toast.makeText(activity, "Some Bluetooth permissions denied.", Toast.LENGTH_LONG)
-                    .show()
-                // You might show a rationale again or disable functionality
-            }
-
+        if (granted.not()) {
+            _permissionState.value = PermissionStatus.Denied
+            return@registerForActivityResult
         }
+        enableBluetoothIfNotEnabled()
+        _permissionState.value = PermissionStatus.Granted
     }
 
     private val enableBluetoothLauncher = activity.registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            Toast.makeText(activity, "Bluetooth enabled!", Toast.LENGTH_SHORT).show()
-            // Bluetooth is now enabled, proceed to request permissions or scan
-        } else {
-            Toast.makeText(activity, "Bluetooth not enabled.", Toast.LENGTH_SHORT).show()
-            // User did not enable Bluetooth
-        }
+    ) {
     }
+
+    // very first time -> false
+    // 1st decline -> true
+
 
     private fun requestALLBleRelatedPermissions() {
         val permissionsToRequest = getRequiredPermissions()
-        if (permissionsToRequest.isNotEmpty()) {
-            requestBluetoothPermissionsLauncher.launch(permissionsToRequest.toTypedArray())
-        } else {
-            checkAndRequestPermissionsAndBluetooth()
-            // All necessary permissions are already granted, proceed with BLE scan
-            _permissionState.value = PermissionState.Granted
-            Toast.makeText(
-                activity,
-                "Permissions already granted, ready to scan!",
-                Toast.LENGTH_SHORT
-            ).show()
+        if (permissionsToRequest.isEmpty()) {
+            enableBluetoothIfNotEnabled()
+            _permissionState.value = PermissionStatus.Granted
+            return
         }
+        val permissionsDeniedPermanently = permissionsToRequest
+            .filter { permission -> activity.shouldShowRequestPermissionRationale(permission) }
+
+        if (permissionsDeniedPermanently.isNotEmpty()) {
+            // At least one permission is permanently denied, show settings dialog
+            _permissionState.value = PermissionStatus.Denied
+            showSettingsDialog(permissionsDeniedPermanently.first())
+            return
+        }
+        requestBluetoothPermissionsLauncher.launch(permissionsToRequest.toTypedArray())
     }
 
-    private fun checkAndRequestPermissionsAndBluetooth() {
+    private fun enableBluetoothIfNotEnabled() {
         if (bluetoothAdapter.isEnabled) return
-        // Bluetooth is not available or not enabled, prompt user to enable it
         val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
         enableBluetoothLauncher.launch(enableBtIntent)
-
     }
 
     private fun getRequiredPermissions(): List<String> {
@@ -117,15 +121,29 @@ class PermissionDelegate @Inject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
         }
-        return permissions
+        return permissions.filter { permission ->
+            activity.checkSelfPermission(permission) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
     }
 
     fun onResume() {
+        printLog("onResume called in PermissionDelegate")
         requestALLBleRelatedPermissions()
+        checkAndUpdateIfLocationEnabled()
+        checkIfBLEEnabled()
     }
 
+    private fun checkAndUpdateIfLocationEnabled() {
+        printLog("Checking if location is enabled")
+        _isLocationEnabled.value = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+    }
 
-    private fun showSettingsDialog() {
+    private fun checkIfBLEEnabled() {
+        printLog("Checking if Bluetooth is enabled")
+        _isBLEEnabled.value = bluetoothAdapter.isEnabled
+    }
 
+    private fun showSettingsDialog(permission: String) {
+        printLog("Need to show settings dialog to user $permission")
     }
 }

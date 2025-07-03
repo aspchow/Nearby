@@ -31,34 +31,38 @@ class MainActivity : ComponentActivity() {
         setContent {
             NearbyTheme {
                 val bleResolvedDevices by viewModel.resolvedDevices.collectAsState()
-                val permissionState by permissionDelegate.permissionState.collectAsState()
+                val permissionState by permissionDelegate.permissionState.collectAsState(PermissionDelegate.PermissionMeta.Unknown)
                 val scanningState by viewModel.scanningState.collectAsState()
+                val isLocationEnabled by permissionDelegate.isLocationEnabled.collectAsState()
+                val isBlEEnabled by permissionDelegate.isBLEEnabled.collectAsState()
                 ReaderScreen(
                     bleDevices = bleResolvedDevices,
-                    permissionState = permissionState,
-                    scanningState = scanningState
+                    permissionMeta = permissionState,
+                    scanningState = scanningState,
+                    isLocationEnabled = isLocationEnabled,
+                    isBLEEnabled = isBlEEnabled
                 )
             }
         }
         observeTheState()
     }
 
-
     private fun observeTheState() {
-        permissionDelegate.onResume()
         lifecycleScope.launch {
             permissionDelegate.permissionState.collectLatest { permissionState ->
                 when (permissionState) {
-                    PermissionDelegate.PermissionState.Denied -> {
-
+                    is PermissionDelegate.PermissionMeta.Granted -> {
+                        val (locationEnabled, bleEnabled) = permissionState
+                        if (locationEnabled && bleEnabled) {
+                            viewModel.startScanning()
+                        } else {
+                            viewModel.stopScanning()
+                        }
                     }
 
-                    PermissionDelegate.PermissionState.Granted -> {
-                        viewModel.startScanning()
-                    }
-
-                    PermissionDelegate.PermissionState.Idle -> {
-
+                    else -> {
+                        viewModel.stopScanning()
+                        // Handle the denied state if needed
                     }
                 }
             }
@@ -66,9 +70,13 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onResume() {
-        viewModel.resolvedDevices
         super.onResume()
+        permissionDelegate.onResume()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        viewModel.stopScanning()
+    }
 }
 
