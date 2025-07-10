@@ -13,7 +13,6 @@ import com.avinash.nearby.sender.model.BLEDevice
 fun ScanResult?.getBLEDevice(): BLEDevice? {
     if (this == null) return null
     return BLEDevice(
-        device.name ?: return null,
-        device.address,
+        device.name ?: return null
     )
 }

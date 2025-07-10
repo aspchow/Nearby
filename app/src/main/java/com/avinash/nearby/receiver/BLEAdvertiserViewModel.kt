@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.avinash.nearby.receiver.manager.BLEAdvertiserManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlin.random.Random
 
 /**
  * Created by Avinash Munnangi on 09/07/25.
@@ -25,7 +26,7 @@ class BLEAdvertiserViewModel @Inject constructor() : ViewModel() {
 
     fun startAdvertising() {
         // Logic to start advertising
-        manager.startAdvertising("Jai BABU")
+        manager.startAdvertising("JaiBABU${Random.nextInt(1000)}")
     }
 
     fun stopAdvertising() {

@@ -19,6 +19,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.ParcelUuid
+import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.avinash.nearby.receiver.model.BLEAdvertisementMeta
@@ -47,11 +48,12 @@ class BLEAdvertiseService : Service() {
     private var currentIntent: Intent? = null
 
     private val advertiseCallback = object : AdvertiseCallback() {
+        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
             super.onStartSuccess(settingsInEffect)
             serviceRepository.updateServiceMeta(
                 meta = BLEAdvertisementMeta.Advertising(
-                    advertisingName = currentIntent.getBLEName()
+                    advertisingName = currentIntent.getBLEName(),
                 )
             )
             printLog("BLE advertising started successfully.")
@@ -157,7 +159,17 @@ class BLEAdvertiseService : Service() {
 
         val settings = buildAdvertiseSettings()
         val data = buildAdvertiseData()
-        bluetoothAdapter.setName(name)
+        val setName = bluetoothAdapter.setName(name)
+        printLog("The set name $setName")
+
+        bleAdvertiser?.startAdvertising(settings, data, advertiseCallback)
+        bleAdvertiser?.stopAdvertising(advertiseCallback)
+        bleAdvertiser?.startAdvertising(settings, data, advertiseCallback)
+        bleAdvertiser?.stopAdvertising(advertiseCallback)
+
+        bluetoothAdapter.disable()
+        bluetoothAdapter.enable()
+
         bleAdvertiser?.startAdvertising(settings, data, advertiseCallback)
     }
 
@@ -180,10 +192,15 @@ class BLEAdvertiseService : Service() {
 
     private fun buildAdvertiseSettings(): AdvertiseSettings {
         return AdvertiseSettings.Builder()
-            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER)
+            .apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    setDiscoverable(true)
+                }
+            }
+            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
             .setConnectable(false)
             .setTimeout(0)
-            .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
+            .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
             .build()
     }
 

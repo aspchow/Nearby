@@ -15,6 +15,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -40,12 +41,8 @@ class BLEScannerManager @Inject constructor(
 
     private suspend fun collectBLEDevicesFromScanner() {
         bleDeviceScanner.bleDevices
-            .emitOnChuckedOrDebounce(
-                duration = 400,
-                size = 5
-            )
             .collect { bleDevices ->
-                printLog("Collected BLE Devices: Total ${bleDevices.size} unique ${bleDevices.distinctBy { it.macAddress }.size} $bleDevices")
+                printLog("Collected BLE Devices: Total $bleDevices")
                 _bleResolvedDevices.update { resolvedDevices ->
                     val acc =
                         resolvedDevices + bleResolver.resolveBLEDevices(bleDevices = bleDevices)

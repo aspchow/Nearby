@@ -8,6 +8,7 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
+import com.avinash.nearby.permission.PermissionDelegate
 import com.avinash.nearby.receiver.manager.BLEAdvertiserManager
 import com.avinash.nearby.receiver.BLEAdvertiserViewModel
 import com.avinash.nearby.sender.ScannerViewModel
@@ -87,6 +88,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         permissionDelegate.onResume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        permissionDelegate.onPause()
     }
 
     override fun onDestroy() {

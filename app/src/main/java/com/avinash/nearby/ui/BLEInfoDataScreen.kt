@@ -8,7 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.avinash.nearby.PermissionDelegate
+import com.avinash.nearby.permission.PermissionDelegate
 import com.avinash.nearby.receiver.model.BLEAdvertisementMeta
 import com.avinash.nearby.sender.model.BLEResolvedDevice
 import com.avinash.nearby.sender.scanner.ScanState

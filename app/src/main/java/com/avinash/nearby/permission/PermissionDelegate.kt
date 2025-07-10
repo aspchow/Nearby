@@ -1,17 +1,20 @@
-package com.avinash.nearby
+package com.avinash.nearby.permission
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.content.Intent
+import android.content.IntentFilter
 import android.location.LocationManager
 import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
 import com.avinash.nearby.utils.printLog
 import dagger.hilt.android.scopes.ActivityScoped
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 
@@ -22,7 +25,8 @@ import javax.inject.Inject
 class PermissionDelegate @Inject constructor(
     private val bluetoothAdapter: BluetoothAdapter,
     private val locationManager: LocationManager,
-    private val activity: ComponentActivity
+    private val activity: ComponentActivity,
+    private val locationPermissionProvider: SystemStateReceiver
 ) {
 
     enum class PermissionStatus {
@@ -37,6 +41,7 @@ class PermissionDelegate @Inject constructor(
         data object Denied : PermissionMeta
     }
 
+    private var isReceiverRegistered = false
 
     private val _isLocationEnabled = MutableStateFlow(false)
     val isLocationEnabled = _isLocationEnabled.asStateFlow()
@@ -46,6 +51,7 @@ class PermissionDelegate @Inject constructor(
 
 
     private val _permissionState = MutableStateFlow(PermissionStatus.Unknown)
+
     val permissionState = combine(
         _permissionState,
         isBLEEnabled,
@@ -59,11 +65,9 @@ class PermissionDelegate @Inject constructor(
                     bleEnabled = isBLEEnabled
                 )
             }
-
             PermissionStatus.Denied -> PermissionMeta.Denied
         }
     }
-
 
     private val requestBluetoothPermissionsLauncher = activity.registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -81,11 +85,8 @@ class PermissionDelegate @Inject constructor(
     private val enableBluetoothLauncher = activity.registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
+        // do nothing
     }
-
-    // very first time -> false
-    // 1st decline -> true
-
 
     private fun requestALLBleRelatedPermissions() {
         val permissionsToRequest = getRequiredPermissions()
@@ -135,9 +136,19 @@ class PermissionDelegate @Inject constructor(
 
     fun onResume() {
         printLog("onResume called in PermissionDelegate")
+        checkPermissionAreEnabled()
         requestALLBleRelatedPermissions()
-        checkAndUpdateIfLocationEnabled()
-        checkIfBLEEnabled()
+        observeSystemState()
+    }
+
+    fun onPause() {
+        printLog("onPause called in PermissionDelegate")
+        // No specific actions needed on pause for permissions
+        if (!isReceiverRegistered){
+            return
+        }
+        activity.unregisterReceiver(locationPermissionProvider)
+        isReceiverRegistered = false
     }
 
     private fun checkAndUpdateIfLocationEnabled() {
@@ -152,5 +163,24 @@ class PermissionDelegate @Inject constructor(
 
     private fun showSettingsDialog(permission: String) {
         printLog("Need to show settings dialog to user $permission")
+    }
+
+    private fun checkPermissionAreEnabled() {
+        checkIfBLEEnabled()
+        checkAndUpdateIfLocationEnabled()
+    }
+
+    private fun observeSystemState() {
+        val intentFilter = IntentFilter().apply {
+            addAction(LocationManager.PROVIDERS_CHANGED_ACTION)
+            addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
+        }
+        activity.lifecycleScope.launch {
+            locationPermissionProvider.systemStateUpdate.collect {
+                checkPermissionAreEnabled()
+            }
+        }
+        activity.registerReceiver(locationPermissionProvider, intentFilter)
+        isReceiverRegistered = true
     }
 }
