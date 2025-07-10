@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.avinash.nearby.PermissionDelegate
+import com.avinash.nearby.receiver.model.BLEAdvertisementMeta
 import com.avinash.nearby.sender.model.BLEResolvedDevice
 import com.avinash.nearby.sender.scanner.ScanState
 
@@ -17,7 +18,8 @@ import com.avinash.nearby.sender.scanner.ScanState
  */
 
 @Composable
-fun ReaderScreen(
+fun BLEInfoDataScreen(
+    advertising: BLEAdvertisementMeta,
     bleDevices: List<BLEResolvedDevice>,
     isLocationEnabled : Boolean,
     isBLEEnabled : Boolean,
@@ -29,6 +31,10 @@ fun ReaderScreen(
             top = 30.dp
         )
     ) {
+        item {
+            Text("Advertising Meta $advertising")
+        }
+
         item {
             Text("The Permission State : $permissionMeta")
         }
@@ -53,8 +59,6 @@ fun ReaderScreen(
         }) { device ->
             Column {
                 Text(device.bleId)
-               /* Text(device.deviceName)
-                Text(device.imageUrl)*/
             }
         }
     }

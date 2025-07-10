@@ -41,7 +41,7 @@ class BLEScannerManager @Inject constructor(
     private suspend fun collectBLEDevicesFromScanner() {
         bleDeviceScanner.bleDevices
             .emitOnChuckedOrDebounce(
-                duration = 1500,
+                duration = 400,
                 size = 5
             )
             .collect { bleDevices ->

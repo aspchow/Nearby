@@ -7,7 +7,9 @@ import android.bluetooth.le.ScanResult
 import androidx.annotation.RequiresPermission
 import com.avinash.nearby.sender.model.BLEDevice
 import com.avinash.nearby.utils.printLog
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 
@@ -15,13 +17,13 @@ import javax.inject.Inject
  * Created by Avinash Munnangi on 01/07/25.
  */
 class BLEDeviceScanner @Inject constructor(
-    private val bleScanner: BluetoothLeScanner,
+    private val bleScanner: BluetoothLeScanner?,
     private val bleScanFilterProvider: BLEScanFilterProvider,
     private val bleScanSettingsProvider: BLEScanSettingsProvider
 ) {
 
-    private val _bleDevices = MutableStateFlow<Set<BLEDevice>>(emptySet())
-    val bleDevices = _bleDevices.asStateFlow()
+    private val _bleDevices = MutableSharedFlow<Set<BLEDevice>>(extraBufferCapacity = 15)
+    val bleDevices = _bleDevices.asSharedFlow()
 
     private val _scanningState = MutableStateFlow<ScanState>(ScanState.IDLE)
     val scanningState = _scanningState.asStateFlow()
@@ -34,7 +36,7 @@ class BLEDeviceScanner @Inject constructor(
             printLog("The Single Scan Result: $result")
             super.onScanResult(callbackType, result)
             val device = result?.getBLEDevice() ?: return
-            _bleDevices.value = setOf(device)
+            _bleDevices.tryEmit(setOf(device))
         }
 
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -42,7 +44,7 @@ class BLEDeviceScanner @Inject constructor(
             printLog("The Batch Scan Result: ${results?.size}")
             super.onBatchScanResults(results)
             val devices = results?.mapNotNull { it.getBLEDevice() } ?: return
-            _bleDevices.value = devices.toSet()
+            _bleDevices.tryEmit(devices.toSet())
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -62,7 +64,12 @@ class BLEDeviceScanner @Inject constructor(
         }
         val scanFilter = bleScanFilterProvider.provideScanFilter()
         val scanSettings = bleScanSettingsProvider.provideScanSettings()
-        bleScanner.startScan(
+        printLog("Starting BLE scan with filter: $scanFilter and settings: $scanSettings")
+        if (bleScanner == null) {
+            _scanningState.value = ScanState.Error("BluetoothLeScanner is not available")
+            return
+        }
+        bleScanner?.startScan(
             scanFilter,
             scanSettings,
             scanCallback
@@ -72,8 +79,10 @@ class BLEDeviceScanner @Inject constructor(
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     fun stopScan() {
-        bleScanner.stopScan(scanCallback)
+        if (scanningState.value != ScanState.Scanning) {
+            return
+        }
+        bleScanner?.stopScan(scanCallback)
         _scanningState.value = ScanState.Stopped
     }
-
 }

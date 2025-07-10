@@ -37,7 +37,7 @@ class BLEModule {
     }
 
     @Provides
-    fun provideScanner(adapter: BluetoothAdapter): BluetoothLeScanner {
+    fun provideScanner(adapter: BluetoothAdapter): BluetoothLeScanner? {
         return adapter.bluetoothLeScanner
     }
 }

@@ -13,10 +13,9 @@ import kotlinx.coroutines.launch
 /**
  * */
 fun <T> Flow<Set<T>>.emitOnChuckedOrDebounce(
-    size: Int = 10,
-    duration : Long = 1000L
+    size: Int,
+    duration : Long
 ): Flow<Set<T>> = channelFlow {
-
     var result: MutableSet<T>? = null
     var debounceJob: Job? = null
 
@@ -36,7 +35,7 @@ fun <T> Flow<Set<T>>.emitOnChuckedOrDebounce(
         if (debounceJob != null) return@collect
         debounceJob = launch {
             delay(duration)
-            emitListAndClearDebounce.invoke(accumulated)
+            emitListAndClearDebounce.invoke(result ?: return@launch)
         }
     }
 }

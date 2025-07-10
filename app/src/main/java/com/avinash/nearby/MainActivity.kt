@@ -8,8 +8,10 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
+import com.avinash.nearby.receiver.manager.BLEAdvertiserManager
+import com.avinash.nearby.receiver.BLEAdvertiserViewModel
 import com.avinash.nearby.sender.ScannerViewModel
-import com.avinash.nearby.ui.ReaderScreen
+import com.avinash.nearby.ui.BLEInfoDataScreen
 import com.avinash.nearby.ui.theme.NearbyTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
@@ -19,7 +21,12 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    private val viewModel by viewModels<ScannerViewModel>()
+    private val scannerViewModel by viewModels<ScannerViewModel>()
+
+    private val receiverViewModel by viewModels<BLEAdvertiserViewModel>()
+
+    @Inject
+    lateinit var manager: BLEAdvertiserManager
 
     @Inject
     lateinit var permissionDelegate: PermissionDelegate
@@ -27,15 +34,21 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // check for location and bluetooth permissions
         super.onCreate(savedInstanceState)
+        receiverViewModel.onActivityCreated(manager = manager)
         enableEdgeToEdge()
         setContent {
             NearbyTheme {
-                val bleResolvedDevices by viewModel.resolvedDevices.collectAsState(emptyList())
-                val permissionState by permissionDelegate.permissionState.collectAsState(PermissionDelegate.PermissionMeta.Unknown)
-                val scanningState by viewModel.scanningState.collectAsState()
+                val bleResolvedDevices by scannerViewModel.resolvedDevices.collectAsState(emptyList())
+                val permissionState by permissionDelegate.permissionState.collectAsState(
+                    PermissionDelegate.PermissionMeta.Unknown
+                )
+                val scanningState by scannerViewModel.scanningState.collectAsState()
                 val isLocationEnabled by permissionDelegate.isLocationEnabled.collectAsState()
                 val isBlEEnabled by permissionDelegate.isBLEEnabled.collectAsState()
-                ReaderScreen(
+                val advertisingMeta by receiverViewModel.advertisingState.collectAsState()
+
+                BLEInfoDataScreen(
+                    advertising = advertisingMeta,
                     bleDevices = bleResolvedDevices,
                     permissionMeta = permissionState,
                     scanningState = scanningState,
@@ -54,14 +67,16 @@ class MainActivity : ComponentActivity() {
                     is PermissionDelegate.PermissionMeta.Granted -> {
                         val (locationEnabled, bleEnabled) = permissionState
                         if (locationEnabled && bleEnabled) {
-                            viewModel.startScanning()
+                            scannerViewModel.startScanning()
+                            receiverViewModel.startAdvertising()
                         } else {
-                            viewModel.stopScanning()
+                            scannerViewModel.stopScanning()
+                            receiverViewModel.stopAdvertising()
                         }
                     }
 
                     else -> {
-                        viewModel.stopScanning()
+                        scannerViewModel.stopScanning()
                         // Handle the denied state if needed
                     }
                 }
@@ -76,7 +91,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        viewModel.stopScanning()
+        scannerViewModel.stopScanning()
     }
 }
 
