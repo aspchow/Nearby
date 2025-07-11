@@ -8,15 +8,10 @@ import android.bluetooth.le.ScanResult
 import androidx.annotation.RequiresPermission
 import com.avinash.nearby.sender.model.BLEDevice
 import com.avinash.nearby.utils.printLog
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**

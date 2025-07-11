@@ -9,13 +9,11 @@ import com.avinash.nearby.sender.model.BLEResolvedDevice
 import com.avinash.nearby.sender.model.BLEResult
 import com.avinash.nearby.sender.resolver.BLEResolver
 import com.avinash.nearby.sender.scanner.BLEDeviceScanner
-import com.avinash.nearby.utils.emitOnChuckedOrDebounce
 import com.avinash.nearby.utils.printLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject

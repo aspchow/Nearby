@@ -26,7 +26,7 @@ class PermissionDelegate @Inject constructor(
     private val bluetoothAdapter: BluetoothAdapter,
     private val locationManager: LocationManager,
     private val activity: ComponentActivity,
-    private val locationPermissionProvider: SystemStateReceiver
+    private val systemStateReceiver: SystemStateReceiver
 ) {
 
     enum class PermissionStatus {
@@ -147,7 +147,7 @@ class PermissionDelegate @Inject constructor(
         if (!isReceiverRegistered){
             return
         }
-        activity.unregisterReceiver(locationPermissionProvider)
+        activity.unregisterReceiver(systemStateReceiver)
         isReceiverRegistered = false
     }
 
@@ -176,11 +176,14 @@ class PermissionDelegate @Inject constructor(
             addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
         }
         activity.lifecycleScope.launch {
-            locationPermissionProvider.systemStateUpdate.collect {
-                checkPermissionAreEnabled()
+            systemStateReceiver.systemStateUpdate.collect {
+                when(it) {
+                    LocationManager.PROVIDERS_CHANGED_ACTION -> checkAndUpdateIfLocationEnabled()
+                    BluetoothAdapter.ACTION_STATE_CHANGED -> checkIfBLEEnabled()
+                }
             }
         }
-        activity.registerReceiver(locationPermissionProvider, intentFilter)
+        activity.registerReceiver(systemStateReceiver, intentFilter)
         isReceiverRegistered = true
     }
 }
