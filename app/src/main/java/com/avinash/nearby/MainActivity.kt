@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // check for location and bluetooth permissions
         super.onCreate(savedInstanceState)
+        permissionDelegate.onCreate()
         receiverViewModel.onActivityCreated(manager = manager)
         enableEdgeToEdge()
         setContent {

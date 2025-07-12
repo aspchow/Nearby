@@ -22,10 +22,15 @@ import android.os.ParcelUuid
 import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
+import com.avinash.nearby.permission.SystemStateReceiver
 import com.avinash.nearby.receiver.model.BLEAdvertisementMeta
 import com.avinash.nearby.utils.BLEConsts
 import com.avinash.nearby.utils.printLog
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
@@ -44,8 +49,15 @@ class BLEAdvertiseService : Service() {
     @Inject
     lateinit var bluetoothAdapter: BluetoothAdapter
 
+    @Inject
+    lateinit var systemStateReceiver: SystemStateReceiver
+
     private var bleAdvertiser: BluetoothLeAdvertiser? = null
     private var currentIntent: Intent? = null
+
+    private val serviceScope = CoroutineScope(SupervisorJob())
+
+
 
     private val advertiseCallback = object : AdvertiseCallback() {
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -81,6 +93,7 @@ class BLEAdvertiseService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        collectTheBleNameChangeEvent()
         bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothAdapter = bluetoothManager.adapter
     }
@@ -107,7 +120,9 @@ class BLEAdvertiseService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         printLog("Service is being destroyed")
+        serviceRepository.updateServiceMeta(meta = BLEAdvertisementMeta.Stopped)
         stopBleAdvertising()
+        serviceScope.cancel()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -161,15 +176,6 @@ class BLEAdvertiseService : Service() {
         val data = buildAdvertiseData()
         val setName = bluetoothAdapter.setName(name)
         printLog("The set name $setName")
-
-        bleAdvertiser?.startAdvertising(settings, data, advertiseCallback)
-        bleAdvertiser?.stopAdvertising(advertiseCallback)
-        bleAdvertiser?.startAdvertising(settings, data, advertiseCallback)
-        bleAdvertiser?.stopAdvertising(advertiseCallback)
-
-        bluetoothAdapter.disable()
-        bluetoothAdapter.enable()
-
         bleAdvertiser?.startAdvertising(settings, data, advertiseCallback)
     }
 
@@ -252,6 +258,30 @@ class BLEAdvertiseService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
+    }
+
+    private fun collectTheBleNameChangeEvent() {
+        serviceScope.launch {
+            systemStateReceiver.systemStateUpdate.collect {
+                when (it) {
+                    BluetoothAdapter.ACTION_LOCAL_NAME_CHANGED -> {
+                        printLog("Bluetooth local name changed, restarting advertising")
+                        if (ActivityCompat.checkSelfPermission(
+                                this@BLEAdvertiseService,
+                                Manifest.permission.BLUETOOTH_ADVERTISE
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            return@collect
+                        }
+
+                        bleAdvertiser?.stopAdvertising(advertiseCallback)
+                        val settings = buildAdvertiseSettings()
+                        val data = buildAdvertiseData()
+                        bleAdvertiser?.startAdvertising(settings, data, advertiseCallback)
+                    }
+                }
+            }
+        }
     }
 
     fun Intent?.getBLEName(): String {

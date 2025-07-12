@@ -9,18 +9,20 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import javax.inject.Singleton
 
 
 /**
  * Created by Avinash Munnangi on 10/07/25.
  */
+@Singleton
 class SystemStateReceiver @Inject constructor(): BroadcastReceiver() {
 
     init {
         printLog("New SystemStateReceiver Created")
     }
 
-    private val _systemStateUpdate = MutableSharedFlow<String>()
+    private val _systemStateUpdate = MutableSharedFlow<String>(replay = 1)
     val systemStateUpdate = _systemStateUpdate.asSharedFlow()
 
     override fun onReceive(context: Context, intent: Intent) {
