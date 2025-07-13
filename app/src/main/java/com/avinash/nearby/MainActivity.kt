@@ -9,6 +9,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
 import com.avinash.nearby.permission.PermissionDelegate
+import com.avinash.nearby.permission.model.SensorEnabledAction
+import com.avinash.nearby.permission.model.PermissionMeta
+import com.avinash.nearby.permission.ui.BLEPermissionUI
 import com.avinash.nearby.receiver.manager.BLEAdvertiserManager
 import com.avinash.nearby.receiver.BLEAdvertiserViewModel
 import com.avinash.nearby.sender.ScannerViewModel
@@ -41,8 +44,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             NearbyTheme {
                 val bleResolvedDevices by scannerViewModel.resolvedDevices.collectAsState(emptyList())
-                val permissionState by permissionDelegate.permissionState.collectAsState(
-                    PermissionDelegate.PermissionMeta.Unknown
+                val permissionState by permissionDelegate.permissionMeta.collectAsState(
+                    PermissionMeta.Unknown
                 )
                 val scanningState by scannerViewModel.scanningState.collectAsState()
                 val isLocationEnabled by permissionDelegate.isLocationEnabled.collectAsState()
@@ -54,9 +57,11 @@ class MainActivity : ComponentActivity() {
                     bleDevices = bleResolvedDevices,
                     permissionMeta = permissionState,
                     scanningState = scanningState,
-                    isLocationEnabled = isLocationEnabled,
-                    isBLEEnabled = isBlEEnabled
+                    isLocationEnabled = isLocationEnabled == SensorEnabledAction.TurnedOn,
+                    isBLEEnabled = isBlEEnabled == SensorEnabledAction.TurnedOn
                 )
+
+                BLEPermissionUI(permissionDelegate = permissionDelegate)
             }
         }
         observeTheState()
@@ -64,11 +69,15 @@ class MainActivity : ComponentActivity() {
 
     private fun observeTheState() {
         lifecycleScope.launch {
-            permissionDelegate.permissionState.collectLatest { permissionState ->
+            permissionDelegate.permissionMeta.collectLatest { permissionState ->
                 when (permissionState) {
-                    is PermissionDelegate.PermissionMeta.Granted -> {
+                    is PermissionMeta.Granted -> {
                         val (locationEnabled, bleEnabled) = permissionState
-                        if (locationEnabled && bleEnabled) {
+                        val permissionTurnedOn = listOf(
+                            locationEnabled,
+                            bleEnabled
+                        ).all { it == SensorEnabledAction.TurnedOn }
+                        if (permissionTurnedOn) {
                             scannerViewModel.startScanning()
                             receiverViewModel.startAdvertising()
                         } else {

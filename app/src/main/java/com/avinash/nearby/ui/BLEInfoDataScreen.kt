@@ -8,7 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.avinash.nearby.permission.PermissionDelegate
+import com.avinash.nearby.permission.model.PermissionMeta
 import com.avinash.nearby.receiver.model.BLEAdvertisementMeta
 import com.avinash.nearby.sender.model.BLEResolvedDevice
 import com.avinash.nearby.sender.scanner.ScanState
@@ -21,10 +21,10 @@ import com.avinash.nearby.sender.scanner.ScanState
 fun BLEInfoDataScreen(
     advertising: BLEAdvertisementMeta,
     bleDevices: List<BLEResolvedDevice>,
-    isLocationEnabled : Boolean,
-    isBLEEnabled : Boolean,
-    permissionMeta: PermissionDelegate.PermissionMeta,
-    scanningState  : ScanState
+    isLocationEnabled: Boolean,
+    isBLEEnabled: Boolean,
+    permissionMeta: PermissionMeta,
+    scanningState: ScanState
 ) {
     LazyColumn(
         modifier = Modifier.padding(
@@ -63,3 +63,4 @@ fun BLEInfoDataScreen(
         }
     }
 }
+

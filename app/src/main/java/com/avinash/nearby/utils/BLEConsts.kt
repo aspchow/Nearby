@@ -5,5 +5,5 @@ package com.avinash.nearby.utils
  */
 object BLEConsts {
     const val SERVICE_UUID = "0000950d-0000-1000-8000-00805f9b34fb" //FINAL
-    const val ENABLE_SERVICE_FILTER = true
+    const val ENABLE_SERVICE_FILTER = false
 }
