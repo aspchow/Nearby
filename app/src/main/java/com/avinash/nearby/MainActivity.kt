@@ -17,6 +17,7 @@ import com.avinash.nearby.receiver.BLEAdvertiserViewModel
 import com.avinash.nearby.sender.ScannerViewModel
 import com.avinash.nearby.ui.BLEInfoDataScreen
 import com.avinash.nearby.ui.theme.NearbyTheme
+import com.avinash.nearby.utils.printLog
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -70,6 +71,7 @@ class MainActivity : ComponentActivity() {
     private fun observeTheState() {
         lifecycleScope.launch {
             permissionDelegate.permissionMeta.collectLatest { permissionState ->
+                printLog("Permission State in collectLatest: $permissionState")
                 when (permissionState) {
                     is PermissionMeta.Granted -> {
                         val (locationEnabled, bleEnabled) = permissionState
@@ -85,7 +87,6 @@ class MainActivity : ComponentActivity() {
                             receiverViewModel.stopAdvertising()
                         }
                     }
-
                     else -> {
                         scannerViewModel.stopScanning()
                         // Handle the denied state if needed

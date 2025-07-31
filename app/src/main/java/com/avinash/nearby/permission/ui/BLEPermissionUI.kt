@@ -15,21 +15,27 @@ fun BLEPermissionUI(permissionDelegate: PermissionDelegate) {
     val permissionMeta: PermissionMeta by permissionDelegate.permissionMeta.collectAsState(
         PermissionMeta.Unknown
     )
+    val permissionState: PermissionMeta = permissionMeta
 
-    (permissionMeta as? PermissionMeta.Denied)?.let {
-        PermissionEducationDialog(it)
-        return
-    }
+    when (permissionState) {
+        is PermissionMeta.Denied -> {
+            PermissionEducationDialog(permissionMeta as PermissionMeta.Denied)
+        }
 
-    (permissionMeta as? PermissionMeta.Granted)?.let {
-        SensorEducationDialog(
-            it, onRequestTurnOnBLE = {
-                permissionDelegate.onRequestTurnOnBLE()
-            },
-            onRequestTurnOnLocation = {
-                permissionDelegate.onRequestTurnOnLocation()
-            })
-        return
+        is PermissionMeta.Granted -> {
+            SensorEducationDialog(
+                permissionMeta as PermissionMeta.Granted, onRequestTurnOnBLE = {
+                    permissionDelegate.onRequestTurnOnBLE()
+                },
+                onRequestTurnOnLocation = {
+                    permissionDelegate.onRequestTurnOnLocation()
+                })
+        }
+
+        PermissionMeta.Unknown -> {
+            // Do nothing, waiting for the permission state to be updated
+        }
+
     }
 
 }

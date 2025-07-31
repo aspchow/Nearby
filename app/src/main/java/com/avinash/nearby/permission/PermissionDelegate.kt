@@ -8,7 +8,6 @@ import android.content.IntentFilter
 import android.content.IntentSender
 import android.location.LocationManager
 import android.os.Build
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
@@ -18,6 +17,7 @@ import androidx.lifecycle.lifecycleScope
 import com.avinash.nearby.permission.model.PermissionMeta
 import com.avinash.nearby.permission.model.PermissionStatus
 import com.avinash.nearby.permission.model.SensorEnabledAction
+import com.avinash.nearby.utils.printLog
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
@@ -64,6 +64,7 @@ class PermissionDelegate @Inject constructor(
         isBLEEnabled,
         isLocationEnabled
     ) { permissionStatus, isBLEEnabled, isLocationEnabled ->
+        printLog("Permission State in permission meta: $permissionStatus")
         when (permissionStatus) {
             PermissionStatus.Unknown -> PermissionMeta.Unknown
             PermissionStatus.Granted -> PermissionMeta.Granted(
@@ -114,6 +115,7 @@ class PermissionDelegate @Inject constructor(
     private fun requestAllBleRelatedPermissions() {
         val permissionsToRequest = getPendingPermissions()
         if (permissionsToRequest.isEmpty()) {
+            printLog("Permission Granted for all BLE related permissions")
             _permissionState.value = PermissionStatus.Granted
             return
         }
@@ -147,7 +149,12 @@ class PermissionDelegate @Inject constructor(
     private fun handlePermissionsResult(permissions: Map<String, Boolean>) {
         val granted = permissions.all { it.value }
         if (granted) {
-            _permissionState.value = PermissionStatus.Granted
+            printLog("All BLE related permissions granted $permissions")
+            _permissionState.value = if (getPendingPermissions().isEmpty()){
+                PermissionStatus.Granted
+            } else {
+                PermissionStatus.Unknown
+            }
             return
         }
         _permissionState.value = PermissionStatus.Denied(getPendingPermissions())
@@ -165,6 +172,7 @@ class PermissionDelegate @Inject constructor(
         val intentFilter = IntentFilter().apply {
             addAction(LocationManager.PROVIDERS_CHANGED_ACTION)
             addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
+            addAction(BluetoothAdapter.ACTION_LOCAL_NAME_CHANGED)
         }
         activity.registerReceiver(systemStateReceiver, intentFilter)
         isReceiverRegistered = true

@@ -26,6 +26,7 @@ class SystemStateReceiver @Inject constructor(): BroadcastReceiver() {
     val systemStateUpdate = _systemStateUpdate.asSharedFlow()
 
     override fun onReceive(context: Context, intent: Intent) {
+        printLog("SystemStateReceiver onReceive called with action: ${intent.action}")
         val action = intent.action ?: return
         GlobalScope.launch { _systemStateUpdate.emit(action) }
     }
